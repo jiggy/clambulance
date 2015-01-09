@@ -6,15 +6,21 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import static java.util.logging.Level.*;
 
-import java.net.URISyntaxException;
+import java.net.URI;
+import java.net.URL;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.FileVisitResult;
+import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.HashMap;
 import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 
@@ -65,24 +71,65 @@ public class StaticServer {
     }
 
     public static void main(final String[] args) throws Exception {
+
+        Path docRoot;
+        final URL resource = StaticServer.class.getResource("/site");
+        log.log(INFO, "Resource " + resource.toString());
+        if (resource.toString().startsWith("jar:")) {
+            FileSystem jarfs = FileSystems.newFileSystem(URI.create(resource.toString().split("!")[0]), new HashMap());
+            docRoot = jarfs.getPath(resource.toURI().toString());
+            for (Path dir : jarfs.getRootDirectories()) {
+                Files.walkFileTree(dir, new FileVisitor<Path>() {
+                    @Override
+                    public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                        return FileVisitResult.CONTINUE;
+                    }
+
+                    @Override
+                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                        if (file.toString().endsWith(".html")) {
+                            log.log(INFO, "Visting " + file.toAbsolutePath());
+                        }
+                        return FileVisitResult.CONTINUE;
+                    }
+
+                    @Override
+                    public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+                        return FileVisitResult.CONTINUE;
+                    }
+
+                    @Override
+                    public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                        return FileVisitResult.CONTINUE;
+                    }
+                });
+            }
+            log.log(INFO, "Docroot?" + Files.isDirectory(docRoot));
+        } else {
+            docRoot = Paths.get(StaticServer.class.getResource("/site").toURI());
+        }
+
         // set defaults
         int port = 8080;
-        Path docRoot = Paths.get(".");
+
         // use passed args
         int nextArg = 0;
         if (args.length > 0) {
             if (args[nextArg].equalsIgnoreCase("bundle")) {
                 nextArg++;
-                Path jarFile = CapsuleUtils.getCapsuleJar();
-                log.log(INFO, "Jar file path is " + jarFile);
+                Path capsuleJar = Paths.get(StaticServer.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+
+                log.log(INFO, "Jar file path is " + capsuleJar);
+                Path siteJar = capsuleJar.getParent().resolve("site.jar");
                 docRoot = Paths.get(args[nextArg]);
                 if (!Files.isDirectory(docRoot)) {
                     System.err.println("First argument [" + args[0] + "] must be a valid directory.");
                     System.exit(1);
                 }
-                Jar jar = new Jar(jarFile);
-                log.log(INFO, "Adding [" + docRoot + "] to jar [" + jarFile + "]");
-                jar.addEntries((Path)null, docRoot);
+                Jar jar = new Jar(capsuleJar);
+                log.log(INFO, "Adding [" + docRoot + "] to jar [" + siteJar + "]");
+                jar.addEntries("site", docRoot);
+                jar.write(siteJar);
                 System.exit(0);
             } else {
                 docRoot = Paths.get(args[0]);
@@ -101,6 +148,9 @@ public class StaticServer {
             }
         }
         log.log(INFO, "Starting server with doc root [" + docRoot.toString() + "] and port [" + port + "]");
+        Path idx = docRoot.resolve("index.html");
+
+        log.log(INFO, "Home page: " + Files.readAllBytes(idx));
         new StaticServer(docRoot, port);
     }
 }

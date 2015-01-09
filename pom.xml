@@ -10,11 +10,6 @@
     <dependencies>
         <dependency>
             <groupId>co.paralleluniverse</groupId>
-            <artifactId>capsule</artifactId>
-            <version>0.10.0</version>
-        </dependency>
-        <dependency>
-            <groupId>co.paralleluniverse</groupId>
             <artifactId>capsule-util</artifactId>
             <version>0.10.0</version>
         </dependency>
@@ -24,25 +19,15 @@
         <plugins>
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>
-                <version>2.4</version>
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>Capsule</mainClass>
-                            <classpathPrefix>lib</classpathPrefix>
-                            <addClasspath>true</addClasspath>
-                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
-                            <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+                            <mainClass>com.hugeinc.ideas.StaticServer</mainClass>
                         </manifest>
-                        <manifestEntries>
-                            <Application-Class>com.hugeinc.ideas.StaticServer</Application-Class>
-                            <Min-Java-Version>1.8.0</Min-Java-Version>
-                            <JVM-Args>-Xmx1024M -Xms512M -server</JVM-Args>
-                        </manifestEntries>
                     </archive>
-                    <descriptors>
-                        <descriptor>src/main/assembly/capsule-fat.xml</descriptor>
-                    </descriptors>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
                 </configuration>
                 <executions>
                     <execution>
